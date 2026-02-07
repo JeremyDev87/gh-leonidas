@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Resolve the extension's root directory (follows symlinks)
+EXTENSION_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")")" && pwd)"
+
+# shellcheck source=lib/utils.sh
+source "${EXTENSION_DIR}/lib/utils.sh"
+
+print_help() {
+  cat <<EOF
+gh leonidas - Install and manage Leonidas on any GitHub repository
+
+USAGE
+  gh leonidas <command> [flags]
+
+COMMANDS
+  setup       Install Leonidas workflow files into the current repository
+  check       Verify Leonidas installation status
+  update      Update Leonidas workflow files to the latest version
+  uninstall   Remove Leonidas from the current repository
+
+FLAGS
+  -h, --help      Show this help message
+  -v, --version   Show version
+
+EXAMPLES
+  gh leonidas setup          # Install Leonidas in current repo
+  gh leonidas check          # Check installation status
+  gh leonidas update         # Update to latest templates
+  gh leonidas uninstall      # Remove Leonidas from repo
+
+LEARN MORE
+  https://github.com/JeremyDev87/leonidas
+EOF
+}
+
+case "${1:-}" in
+  setup)
+    shift
+    # shellcheck source=lib/setup.sh
+    source "${EXTENSION_DIR}/lib/setup.sh"
+    run_setup "$@"
+    ;;
+  check)
+    shift
+    # shellcheck source=lib/check.sh
+    source "${EXTENSION_DIR}/lib/check.sh"
+    run_check "$@"
+    ;;
+  update)
+    shift
+    # shellcheck source=lib/update.sh
+    source "${EXTENSION_DIR}/lib/update.sh"
+    run_update "$@"
+    ;;
+  uninstall)
+    shift
+    # shellcheck source=lib/uninstall.sh
+    source "${EXTENSION_DIR}/lib/uninstall.sh"
+    run_uninstall "$@"
+    ;;
+  -v|--version)
+    echo "gh-leonidas v${LEONIDAS_VERSION}"
+    ;;
+  -h|--help|"")
+    print_help
+    ;;
+  *)
+    error "Unknown command: $1"
+    echo ""
+    print_help
+    exit 1
+    ;;
+esac

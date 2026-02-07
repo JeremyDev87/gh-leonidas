@@ -1,0 +1,69 @@
+name: Leonidas Track
+
+on:
+  issues:
+    types: [closed]
+
+concurrency:
+  group: leonidas-track-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  track:
+    if: contains(github.event.issue.body, '<!-- leonidas-parent:')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Update parent issue checklist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Fetch issue body via API to avoid shell injection from event payload
+          ISSUE_BODY=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER" --jq '.body')
+
+          # Parse parent issue number using jq for safe extraction
+          PARENT=$(echo "$ISSUE_BODY" | jq -Rr 'capture("<!-- leonidas-parent: #(?<n>[0-9]+) -->") | .n // empty')
+          if [ -z "$PARENT" ]; then
+            echo "No parent issue found in body"
+            exit 0
+          fi
+
+          echo "Sub-issue #$ISSUE_NUMBER closed. Updating parent #$PARENT checklist."
+
+          # Find the decomposed plan comment on parent issue
+          # Use jq -s to collect all matches and pick the last one
+          COMMENT_JSON=$(gh api "repos/$REPO/issues/$PARENT/comments" --paginate \
+            --jq '[.[] | select(.body | contains("<!-- leonidas-decomposed -->")) | {id: .id, body: .body}] | last')
+
+          if [ -z "$COMMENT_JSON" ] || [ "$COMMENT_JSON" = "null" ]; then
+            echo "No decomposed plan comment found on parent #$PARENT"
+            exit 0
+          fi
+
+          COMMENT_ID=$(echo "$COMMENT_JSON" | jq -r '.id')
+
+          # Use jq for safe string replacement (no sed metacharacter issues)
+          UPDATED_BODY=$(echo "$COMMENT_JSON" | jq -r --arg num "$ISSUE_NUMBER" \
+            '.body | gsub("- \\[ \\] #" + $num + " "; "- [x] #" + $num + " ")')
+
+          # Update the comment via API using jq-constructed JSON payload
+          echo "$UPDATED_BODY" | jq -Rs '{body: .}' | \
+            gh api "repos/$REPO/issues/comments/$COMMENT_ID" \
+              -X PATCH \
+              --input -
+
+          echo "Updated checklist for #$ISSUE_NUMBER in parent #$PARENT"
+
+          # Check if all sub-issues are complete (count unchecked boxes)
+          REMAINING=$(echo "$UPDATED_BODY" | jq -Rrs '[splits("\n")] | map(select(test("^- \\[ \\] #"))) | length')
+          if [ "$REMAINING" -eq 0 ]; then
+            gh issue comment "$PARENT" --repo "$REPO" \
+              --body $'✅ **Leonidas**: All sub-issues have been completed! This issue can now be closed.'
+            echo "All sub-issues complete. Posted completion comment on #$PARENT."
+          else
+            echo "$REMAINING sub-issues remaining."
+          fi
