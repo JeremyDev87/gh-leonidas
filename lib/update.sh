@@ -49,20 +49,18 @@ run_update() {
     echo ""
   fi
 
-  local ext_dir
-  ext_dir="$(get_extension_dir)"
-  local template_dir="${ext_dir}/templates"
+  local template_dir="${EXTENSION_DIR}/templates"
   local updated=0
 
   # Update workflow files
   local workflows=("leonidas-plan.yml" "leonidas-execute.yml" "leonidas-track.yml")
   for wf in "${workflows[@]}"; do
-    if diff -q "${template_dir}/${wf}" ".github/workflows/${wf}" &>/dev/null; then
+    if [[ -f ".github/workflows/${wf}" ]] && diff -q "${template_dir}/${wf}" ".github/workflows/${wf}" &>/dev/null; then
       info "  .github/workflows/${wf} (already up to date)"
     else
       cp "${template_dir}/${wf}" ".github/workflows/${wf}"
       success "  .github/workflows/${wf} (updated)"
-      ((updated++))
+      updated=$((updated + 1))
     fi
   done
   echo ""

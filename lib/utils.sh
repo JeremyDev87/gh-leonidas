@@ -71,6 +71,9 @@ require_repo_context() {
     error "This repository must have a GitHub remote."
     exit 1
   fi
+
+  # Always operate from the repository root
+  cd "$(git rev-parse --show-toplevel)" || exit 1
 }
 
 get_repo_owner_name() {
@@ -86,13 +89,4 @@ confirm() {
   [[ "$response" =~ ^[Yy]$ ]]
 }
 
-get_extension_dir() {
-  local source="${BASH_SOURCE[0]}"
-  while [[ -L "$source" ]]; do
-    local dir
-    dir="$(cd -P "$(dirname "$source")" && pwd)"
-    source="$(readlink "$source")"
-    [[ "$source" != /* ]] && source="$dir/$source"
-  done
-  cd -P "$(dirname "$source")/.." && pwd
-}
+# Note: EXTENSION_DIR is set by the main gh-leonidas script before sourcing this file.

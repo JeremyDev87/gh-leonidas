@@ -4,6 +4,10 @@ on:
   issue_comment:
     types: [created]
 
+concurrency:
+  group: leonidas-execute-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
 jobs:
   execute:
     if: |
@@ -16,11 +20,9 @@ jobs:
       )
     runs-on: ubuntu-latest
     permissions:
-      actions: write
       contents: write
       issues: write
       pull-requests: write
-      id-token: write
 
     steps:
       - name: Checkout repository

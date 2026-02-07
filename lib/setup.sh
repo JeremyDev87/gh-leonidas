@@ -36,9 +36,7 @@ run_setup() {
   info "Repository: ${repo}"
   echo ""
 
-  local ext_dir
-  ext_dir="$(get_extension_dir)"
-  local template_dir="${ext_dir}/templates"
+  local template_dir="${EXTENSION_DIR}/templates"
 
   # Check if already installed
   if [[ -f ".github/workflows/leonidas-plan.yml" ]] && [[ "$force" != true ]]; then
@@ -90,7 +88,7 @@ run_setup() {
 
   # Check for ANTHROPIC_API_KEY secret
   info "Checking ANTHROPIC_API_KEY secret..."
-  if gh secret list 2>/dev/null | grep -q "ANTHROPIC_API_KEY"; then
+  if gh secret list --json name --jq '.[].name' 2>/dev/null | grep -qx "ANTHROPIC_API_KEY"; then
     success "  ANTHROPIC_API_KEY is set"
   else
     warn "  ANTHROPIC_API_KEY is not set"

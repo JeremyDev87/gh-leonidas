@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Resolve the extension's root directory (follows symlinks)
-EXTENSION_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")")" && pwd)"
+# Resolve the extension's root directory (POSIX-compatible, follows symlinks)
+_resolve_dir() {
+  local source="$1"
+  while [ -L "$source" ]; do
+    local dir
+    dir="$(cd -P "$(dirname "$source")" && pwd)"
+    source="$(readlink "$source")"
+    [ "${source#/}" = "$source" ] && source="$dir/$source"
+  done
+  cd -P "$(dirname "$source")" && pwd
+}
+EXTENSION_DIR="$(_resolve_dir "$0")"
 
 # shellcheck source=lib/utils.sh
 source "${EXTENSION_DIR}/lib/utils.sh"

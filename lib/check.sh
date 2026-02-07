@@ -18,10 +18,10 @@ run_check() {
   for wf in "${workflows[@]}"; do
     if [[ -f ".github/workflows/${wf}" ]]; then
       success "  .github/workflows/${wf}"
-      ((pass++))
+      pass=$((pass + 1))
     else
       error "  .github/workflows/${wf} (missing)"
-      ((fail++))
+      fail=$((fail + 1))
     fi
   done
 
@@ -48,7 +48,7 @@ run_check() {
 
   # Check secret
   info "Secret:"
-  if gh secret list 2>/dev/null | grep -q "ANTHROPIC_API_KEY"; then
+  if gh secret list --json name --jq '.[].name' 2>/dev/null | grep -qx "ANTHROPIC_API_KEY"; then
     success "  ANTHROPIC_API_KEY is set"
     ((pass++))
   else
@@ -60,13 +60,13 @@ run_check() {
   # Check authorization in execute workflow
   info "Security:"
   if [[ -f ".github/workflows/leonidas-execute.yml" ]]; then
-    if grep -q "author_association" ".github/workflows/leonidas-execute.yml"; then
+    if grep -q "author_association == 'OWNER'" ".github/workflows/leonidas-execute.yml"; then
       success "  Authorization check present in execute workflow"
-      ((pass++))
+      pass=$((pass + 1))
     else
       warn "  No authorization check in execute workflow"
       echo "    See: https://github.com/JeremyDev87/leonidas/blob/main/.github/SECURITY_PATCH.md"
-      ((fail++))
+      fail=$((fail + 1))
     fi
   fi
   echo ""
@@ -82,5 +82,5 @@ run_check() {
     warn "Some checks failed. Run 'gh leonidas setup' to fix."
   fi
 
-  return "$fail"
+  [[ "$fail" -eq 0 ]] && return 0 || return 1
 }
